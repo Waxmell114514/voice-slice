@@ -1,0 +1,43 @@
+{
+  "target_sample_rate": null,
+  "cutpoint": {
+    "frame_length": 2048,
+    "hop_length": 256,
+    "min_gap_ms": 120,
+    "silence_percentile": 18.0,
+    "silence_min_ms": 150,
+    "max_candidates": 96,
+    "weak_boundary_threshold": 0.3,
+    "short_segment_ms": 120,
+    "breath_max_ms": 260,
+    "breath_energy_ratio": 0.82,
+    "breath_zcr_threshold": 0.105,
+    "breath_flatness_threshold": 0.22,
+    "chinese_merge_max_ms": 170
+  },
+  "regions": {
+    "onset_max_sec": 0.12,
+    "tail_max_sec": 0.16,
+    "onset_ratio": 0.22,
+    "tail_ratio": 0.2,
+    "min_nucleus_sec": 0.04
+  },
+  "scoring": {
+    "f0_backend": "pyin",
+    "hop_length": 256,
+    "f0_frame_length": 2048,
+    "pitch_floor_hz": 65.0,
+    "pitch_ceiling_hz": 1200.0,
+    "voiced_prob_threshold": 0.55,
+    "f0_smoothing_frames": 5,
+    "octave_jump_threshold_cents": 650.0,
+    "preferred_duration_sec": 0.28,
+    "preview_max_sample_rate": 12000,
+    "preview_max_points": 3200
+  },
+  "playback": {
+    "preview_crossfade_ms": 35,
+    "boundary_window_ms": 180,
+    "preview_volume": 85
+  }
+}
