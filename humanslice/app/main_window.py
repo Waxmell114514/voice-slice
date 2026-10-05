@@ -179,6 +179,8 @@ class MainWindow(QMainWindow):
         self.redo_button = QPushButton("重做")
         self.auto_segment_button = QPushButton("自动切分")
         self.export_button = QPushButton("导出")
+        self.make_button = QPushButton("一键人力…")
+        self.make_button.setToolTip("素材文件夹 + 歌曲 -> 人力人声、UTAU 音源与 OpenUtau 工程")
         row1.addWidget(self.open_audio_button)
         row1.addWidget(self.open_project_button)
         row1.addWidget(self.save_project_button)
@@ -187,6 +189,7 @@ class MainWindow(QMainWindow):
         row1.addWidget(self.auto_segment_button)
         row1.addStretch(1)
         row1.addWidget(self.export_button)
+        row1.addWidget(self.make_button)
 
         row2 = QHBoxLayout()
         self.play_full_button = QPushButton("播放整段")
@@ -221,6 +224,7 @@ class MainWindow(QMainWindow):
         self.redo_button.clicked.connect(self.redo_last_change)
         self.auto_segment_button.clicked.connect(self.auto_segment)
         self.export_button.clicked.connect(self.export_current_segments)
+        self.make_button.clicked.connect(self.open_make_dialog)
         self.play_full_button.clicked.connect(self.play_full_track)
         self.play_segment_button.clicked.connect(self.play_current_segment)
         self.play_boundary_button.clicked.connect(self.play_boundary_window)
@@ -375,6 +379,14 @@ class MainWindow(QMainWindow):
             f"导出完成: {result['segments_dir']} / {result['metadata_json'].name} / {result['oto_ini'].name}",
             6000,
         )
+
+    def open_make_dialog(self) -> None:
+        from humanslice.ui.make_dialog import MakeDialog
+
+        if getattr(self, "_make_dialog", None) is None:
+            self._make_dialog = MakeDialog(self)
+        self._make_dialog.show()
+        self._make_dialog.raise_()
 
     def _load_audio_from_path(self, path: str, project_data: ProjectData | None = None) -> bool:
         self._set_cutpoint_insert_mode(False)

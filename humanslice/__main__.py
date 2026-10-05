@@ -10,7 +10,11 @@ from humanslice.services.settings_service import load_settings
 
 
 def main() -> int:
-    """Start the HumanSlice desktop application."""
+    """Run the CLI when arguments are given, otherwise start the desktop application."""
+    if len(sys.argv) > 1:
+        from humanslice.cli import main as cli_main
+
+        return cli_main(sys.argv[1:])
     app = QApplication(sys.argv)
     app.setApplicationName("HumanSlice")
     app.setOrganizationName("HumanSlice")

@@ -1,202 +1,125 @@
 # HumanSlice
 
-Desktop tool for heuristic slicing of human vocal materials for Vocaloid, UTAU, OpenUtau, and related voice-editing workflows.
+近乎全自动的人力音 MAD（人力 VOCALOID）制作工具。
 
-HumanSlice 是一个面向人声素材整理的桌面切分工具，重点解决这条实际工作流：
+```
+素材库（某人的语音 / 视频） ──► 音素级切片 + 单元库 ──► UTAU 音源（OpenUtau 可直接加载）
+目标歌曲（清唱或完整歌曲）  ──► 音高 / 歌词 / 音符     ──► OpenUtau 工程（USTX）+ MIDI
+                         单元选择 + 声码器拼接 ──► 人力人声 wav（可与伴奏混音）
+```
 
-`导入长音频 -> 自动生成候选切点 -> 人工微调 -> 快速试听 -> 导出片段与元数据`
+它不训练模型，也不是"AI 翻唱"：输出由素材里真实的音节片段拼成，只把音高、时长修到旋律上。
+单元选择会优先挑音高接近、时长合适的片段，并偏好素材中原本连续的整词，以保留人力的味道。
 
-它不追求音素级强对齐，而是把“切得更顺手、挑得更快、导出更方便”做成一个轻量可用的桌面应用。
-
-## 功能特性
-
-- 导入 `wav` / `mp3` / `flac` 音频
-- 显示波形、频谱预览、整段 F0 预览
-- F0 预览后台异步生成，导入较长素材时不会明显阻塞界面
-- 基于短时能量、onset strength、spectral flux 与静音边界生成候选切点
-- 对呼吸音碎切与中文词内弱边界做后处理合并
-- 支持双击新增切点、拖拽切点、删除切点
-- 支持撤销 / 重做、保存工程 / 打开工程
-- 为每个片段分析 `onset / nucleus / tail`
-- 为每个片段给出 `clarity_score`、`stability_score`、`recommended_role`
-- 支持整段试听、片段试听、边界试听、相邻片段 crossfade 拼接试听
-- 导出 `wav` 片段、`metadata.json`、`metadata.csv`、`oto.ini`、`utau_labels.csv`
-
-## 适用场景
-
-- 人声采样素材初步整理
-- Vocaloid / UTAU / OpenUtau 相关切片准备
-- 鬼畜 / 语音拼接 / 人声编辑前处理
-- 需要先筛掉明显不稳、不清晰片段的离线工作流
-
-## 环境要求
-
-- Python 3.11+
-- 建议使用虚拟环境
-- GUI 基于 `PySide6`
-
-## 安装
+## 快速开始
 
 ```powershell
+# 1. 环境（Python 3.13 + NVIDIA 显卡；RTX 50 系需要 CUDA 12.8+ 的 PyTorch）
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+pip install torch --index-url https://download.pytorch.org/whl/cu130
 pip install -r requirements.txt
+
+# 2. 推荐：安装 Montreal Forced Aligner（音素级对齐，独立 conda 环境，路径不能含空格）
+conda create -p %LOCALAPPDATA%\humanslice\envs\mfa -c conda-forge montreal-forced-aligner python=3.12
+
+# 3. 一条命令：素材文件夹 + 歌曲 -> 人力人声 + 音源 + 工程
+python -m humanslice make --material D:\素材\某人 --vocal 歌曲.mp3 --separate --lyrics 歌词.txt -o out\作品
 ```
 
-`requirements.txt` 会以可编辑模式安装本项目（依赖声明在 `pyproject.toml`）。
+`out\作品` 中会生成：
 
-## 启动
+| 文件 | 说明 |
+|---|---|
+| `jinriki.wav` / `jinriki_mix.wav` | 人力人声 / 与原伴奏混音（`--separate` 时） |
+| `jinriki.report.json` | 每个字用了素材里哪一段（来源文件、时间、变调量） |
+| `voicebank/` | OpenUtau 中文 CVVC 音源（CV、`- CV`、VC、`V R` 别名） |
+| `project.ustx` | OpenUtau 工程：音符 + 拼音歌词 + 原唱音高曲线（pitd），可手工精修 |
+| `melody.mid` | 带拼音歌词的 MIDI |
+| `bank/` | 单元库（可复用：再做别的歌时用 `--bank` 指定） |
+
+首次运行会自动下载模型（约 8 GB）：Qwen3-ASR-1.7B、Qwen3-ForcedAligner-0.6B、RMVPE、
+PC-NSF-HiFiGAN、BS-Roformer 分离模型、MFA 普通话模型。缓存在 `%USERPROFILE%\.cache\huggingface`
+与 `%LOCALAPPDATA%\humanslice`。
+
+## 分步使用
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
-python main.py
+# 素材 -> 单元库（可多次追加素材；同名 .lab/.txt 文件会作为现成转写，跳过识别）
+python -m humanslice bank build D:\素材 -o bank [--separate]
+# 单元库 -> OpenUtau 音源（把文件夹放进 OpenUtau 的 Singers 目录）
+python -m humanslice bank utau bank -o voicebank\某人 --name 某人
+# 歌曲 -> 乐谱（给歌词最准；不给则自动识别）
+python -m humanslice song analyze 清唱.wav --lyrics 歌词.txt -o score.json --ustx song.ustx --singer 某人 --midi song.mid
+# 乐谱 + 单元库 -> 人力人声
+python -m humanslice render bank score.json -o jinriki.wav
 ```
 
-也可以用 `python -m humanslice`，或安装后直接运行 `humanslice`。
+常用渲染参数：
 
-## 基本使用
+- `--transpose N`：整体移调（默认自动按八度移到说话人音域，保持与伴奏同调）
+- `--join-weight`：越大越偏好素材中原本连续的整词（人力感更强）
+- `--pitch-follow`：1 = 完全跟随原唱音高（含颤音、滑音），0 = 平直音符
+- `--backend world`：改用 WORLD 声码器（不依赖非商用权重，音质略差）
 
-1. 点击“导入音频”加载一段素材。
-2. 波形会先显示出来，F0 预览会在后台补齐。
-3. 点击“自动切分”生成候选切点。
-4. 在波形区单击片段，或双击新增切点。
-5. 拖动橙色切点线微调边界，必要时删除错误切点。
-6. 通过片段试听、边界试听、拼接试听快速筛选可用素材。
-7. 编辑 `alias` 和备注。
-8. 点击“导出”输出片段与元数据，或先保存为 `project.json` 继续下次工作。
+不带参数运行 `python -m humanslice`（或 `python main.py`）打开原有的手动切片 GUI。
 
-常用快捷键：
+## 工作原理与选型
 
-- `Ctrl+O` 导入音频
-- `Ctrl+Shift+O` 打开工程
-- `Ctrl+S` 保存工程
-- `Ctrl+R` 自动切分
-- `Ctrl+E` 导出
-- `Ctrl+Z` 撤销
-- `Ctrl+Shift+Z` / `Ctrl+Y` 重做
-- `Space` 播放当前片段
-- `Shift+Space` 播放整段
-- `Alt+Left` / `Alt+Right` 切换片段
-- `Delete` 删除选中切点
-- `Ctrl+D` 进入添加切点模式（在波形或频谱上单击添加）
-- `Escape` 取消添加切点模式 / 停止播放
+调研结论：没有现成的端到端开源"自动人力"工具，但每个环节都有成熟方案，这里直接复用：
 
-## 配置
+| 环节 | 方案 | 说明 |
+|---|---|---|
+| 分离 / 去 BGM | python-audio-separator（BS-Roformer） | 素材去背景音乐；完整歌曲拆成人声 + 伴奏 |
+| 语音识别 | Qwen3-ASR-1.7B（transformers 原生） | 普通话 CER 明显优于 Whisper，也能识别歌声 |
+| 字级时间戳 | Qwen3-ForcedAligner-0.6B | 用于歌声对齐；素材侧作为 MFA 不可用时的后备 |
+| 声母 / 韵母边界 | Montreal Forced Aligner 3.4 | 以带调拼音为 token，发音表由 MFA 词典自动推导 |
+| 音高 | RMVPE | 歌声 F0 标准方案；八度错误修正 |
+| 音符 | 按音节的 F0 分段（启发式） | 可替换为 GAME |
+| 单元选择 | Viterbi（目标代价 + 拼接代价） | 音高差、拉伸倍数、质量、声调；素材内连续片段拼接代价为 0 |
+| 合成 | PC-NSF-HiFiGAN（默认）/ WORLD | 对数 mel / 频谱参数域拼接，F0 用原唱曲线 |
+| 音源 / 工程 | OpenUtau ZH CVVC（presamp.ini）/ USTX | 生成 oto.ini、character.yaml、pitd 曲线 |
 
-仓库提供了示例配置文件 [`config.example.json`](./config.example.json)。
+渲染时每个字：辅音按原长放在拍点之前（先行发声），只拉伸元音中频谱最稳定的部分（主元音），
+超过 2.5 倍时在稳定段内往返循环并平滑；复合元音的滑音和鼻音韵尾放在音符末尾；
+相邻音节在参数域做 30 ms 交叉淡化。
 
-如果需要覆盖默认参数，可复制为 `config.json` 后再启动程序。当前可调内容包括：
+## 开发与评测
 
-- 切点最小间隔、静音检测阈值与静音最短时长
-- 呼吸音识别与弱边界合并阈值
-- `onset / nucleus / tail` 分区参数
-- F0 跟踪与预览降采样参数
-- 试听 crossfade 时长与音量
+```powershell
+pip install -r requirements-dev.txt
+pytest
+python scripts/fetch_devdata.py          # 下载 GTSinger 子集（CC BY-NC-SA）到 devdata/
+python scripts/eval_alignment.py         # 语音对齐精度（对照人工标注）
+python scripts/gt_song.py devdata/songs/ZH-Alto-1_成都_Breathy -o out/chengdu
+python scripts/bench.py out/bank_full    # 渲染可懂度（ASR 音节错误率）+ 音高误差
+```
 
-## 导出内容
+开发集上的当前指标（GTSinger 男高音朗读 110 分钟作素材，女中音两首歌作目标）：
 
-导出目录默认包含：
+- 语音对齐：音节起止平均误差约 21 ms（93% < 50 ms）
+- 歌声对齐（给定歌词）：音节起点 81% < 50 ms；音符逐帧音高命中 84%
+- 渲染：ASR 音节错误率 7.4%（原唱 0.6%），音高中位误差 5 音分
 
-- `segments/`：逐片段导出的 `wav`
-- `metadata.json`：完整结构化元数据
-- `metadata.csv`：便于筛选与脚本处理的表格版本
-- `oto.ini`：按启发式规则生成的 OTO 初值
-- `utau_labels.csv`：表格化导出的 alias / offset / consonant / cutoff / preutterance / overlap
-
-`oto.ini` 当前定位是“继续微调的起点”，不是成品级原音参数。
-
-## 算法说明
-
-### 候选切点
-
-当前版本使用轻量启发式信号处理流程：
-
-- `short-time energy` 用于识别能量抬升与低能区段
-- `onset strength` 用于检测明显起音
-- `spectral flux` 用于捕捉频谱突变
-- 静音边界检测用于补充停顿前后的切分提示
-
-这些线索先生成较宽松的候选切点，再做一次后处理：
-
-- 合并呼吸音内部的碎切
-- 合并中文词内较短、较弱的边界
-- 尽量保留真实停顿和更强的词间边界
-
-### 片段区域
-
-每个片段会进一步划分为：
-
-- `onset`：起音更明显的前段
-- `nucleus`：通常更稳定、适合拉长或调音的主体区
-- `tail`：更容易出现衰减和噪声的尾段
-
-这一步仍然是启发式分析，不是音素级对齐。
-
-### 评分
-
-- `clarity_score`：综合起音强度、尾部残留能量、静音比例与时长合理性
-- `stability_score`：综合 nucleus 区的 F0 稳定性、能量稳定性、voiced 概率与时长合理性
-- `recommended_role`：给出 `onset` / `sustain` / `general` / `weak` 的经验性建议
-
-### F0 预览
-
-整段 F0 预览默认基于 `librosa.pyin`，并包含：
-
-- `voiced_prob` 置信度过滤
-- cents 域平滑
-- 八度跳变惩罚
-- 长音频自动降采样与点数控制
-
-## 项目结构
+## 目录结构
 
 ```text
-HumanSlice/
-├─ main.py                  # 启动入口（等价于 python -m humanslice）
-├─ pyproject.toml           # 包元数据、依赖、pytest 配置
-├─ config.example.json
-├─ humanslice/
-│  ├─ __main__.py
-│  ├─ app/                  # 主窗口与后台任务
-│  ├─ analysis/             # 切点生成、区域分析、片段评分
-│  ├─ audio/                # 音频加载、裁切、试听
-│  ├─ models/               # 项目与片段数据结构
-│  ├─ services/             # 工程保存、设置、导出、撤销重做、片段重建
-│  └─ ui/                   # 波形 / 频谱 / F0 视图、片段详情面板、进度框
-└─ tests/
+humanslice/
+├─ cli.py            命令行入口（python -m humanslice ...）
+├─ corpus/           素材 -> 单元库：导入、切句、识别、MFA 对齐、特征、质检
+├─ song/             目标人声 -> 乐谱：音高、歌词、对齐、音符
+├─ render/           单元选择、时间规划、WORLD / NSF 合成
+├─ export/           UTAU 音源、USTX、MIDI
+├─ pitch/ text/      RMVPE 与 F0 工具；普通话 G2P
+├─ common/           音频 I/O、TextGrid、模型下载、人声分离、数据目录
+├─ analysis/ app/ audio/ models/ services/ ui/   原手动切片 GUI
+scripts/             开发数据下载与评测脚本
+tests/               单元测试
 ```
 
-目录职责：
+## 许可与使用须知
 
-- `humanslice/app/`：主窗口（只负责 UI 交互与状态编排）与 F0 后台任务
-- `humanslice/analysis/`：切点生成、区域分析、片段评分等信号处理
-- `humanslice/audio/`：音频加载、裁切、试听
-- `humanslice/models/`：项目与片段数据结构
-- `humanslice/services/`：工程保存、设置加载、导出、撤销重做，以及切点变化后的片段重建（`segment_service`，不依赖 Qt）
-- `humanslice/ui/`：可复用的界面组件
-- `tests/`：单元测试
-
-## 测试
-
-安装测试依赖：
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements-dev.txt
-```
-
-运行测试：
-
-```powershell
-pytest
-```
-
-当前测试覆盖了切点生成、呼吸音后处理、片段区域分析、评分、导出、撤销重做、工程保存加载、片段重建、波形视图基础行为，以及主窗口的切点编辑冒烟流程。
-
-## 已知限制
-
-- 当前版本会把整段音频读入内存，对超长素材不够节省内存。
-- `mp3` 支持依赖本地解码后端，极端环境下仍可能解码失败。
-- F0 跟踪是轻量离线启发式方案，不是专业级音高标注工具。
-- 呼吸音识别和中文词内合并仍是规则法，不是语音学意义上的精确分段。
-- `oto.ini` 是启发式初值，适合作为后续微调起点。
-- `project.json` 保存的是工程状态，不嵌入原始音频数据。
+- 本仓库代码为 MIT 许可。
+- 默认声码器 PC-NSF-HiFiGAN 的权重为 CC BY-NC-SA 4.0（仅限非商业用途）；`--backend world` 可完全避开。
+- 开发数据 GTSinger 为 CC BY-NC-SA 4.0，不随仓库分发。
+- 使用他人声音素材请自行确认授权与平台规则；OpenVPI 等上游项目明确反对未经同意合成他人声音。

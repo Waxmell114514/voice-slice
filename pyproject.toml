@@ -5,24 +5,39 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "humanslice"
 version = "0.1.0"
-description = "Desktop tool for heuristic slicing of human vocal materials for Vocaloid / UTAU / OpenUtau workflows."
+description = "Near-automatic jinriki (人力 VOCALOID) maker: speech material -> UTAU voicebank + sung renders."
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.11"
 dependencies = [
+    # GUI (manual slicer)
     "PySide6>=6.7",
     "pyqtgraph>=0.13",
+    # audio / DSP
     "numpy>=1.26",
     "scipy>=1.13",
     "librosa>=0.10.2",
     "soundfile>=0.12.1",
     "audioread>=3.0.1",
+    "soxr>=0.3",
+    "pyworld==0.3.5",  # 0.3.6 ships no cp313 Windows wheel
+    # models (install torch from the CUDA index first, see README)
+    "torch>=2.7",
+    "transformers>=5.13",
+    "accelerate>=1.0",
+    "huggingface_hub>=0.30",
+    "onnxruntime>=1.20",
+    "audio-separator>=0.40",
+    # text / formats
+    "pypinyin>=0.50",
+    "cn2an>=0.5",
+    "mido>=1.3",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.2"]
+dev = ["pytest>=8.2", "matplotlib>=3.8"]
 
-[project.gui-scripts]
+[project.scripts]
 humanslice = "humanslice.__main__:main"
 
 [tool.setuptools.packages.find]

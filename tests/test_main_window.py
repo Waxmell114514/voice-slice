@@ -52,3 +52,21 @@ def test_main_window_cutpoint_edit_and_undo_roundtrip(tmp_path: Path) -> None:
         window.close()
         if existing_app is None:
             app.quit()
+
+
+def test_make_dialog_validates_inputs(monkeypatch) -> None:
+    existing_app = QApplication.instance()
+    app = existing_app or QApplication([])
+    from PySide6.QtWidgets import QMessageBox
+
+    from humanslice.ui.make_dialog import MakeDialog
+
+    warnings: list[str] = []
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args: warnings.append(args[2]))
+    dialog = MakeDialog()
+    dialog.run_button.click()
+    assert warnings and "素材" in warnings[0]
+    assert dialog.run_button.isEnabled()
+    dialog.close()
+    if existing_app is None:
+        app.quit()

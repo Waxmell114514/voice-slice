@@ -16,3 +16,7 @@ pytest-cache-files-*/
 
 # Local settings (copy from config.example.json)
 config.json
+
+# Dev datasets (GTSinger subset, CC BY-NC-SA) and local outputs
+devdata/
+out/
