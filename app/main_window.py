@@ -56,6 +56,7 @@ class MainWindow(QMainWindow):
         self._f0_job_id = 0
         self._f0_preview_times = None
         self._f0_preview_values = None
+        self._cutpoint_insert_mode = False
         self.history = HistoryManager()
 
         self.playback = PlaybackController(volume=self.settings.playback.preview_volume, parent=self)
@@ -148,10 +149,10 @@ class MainWindow(QMainWindow):
             "Ctrl+E 导出",
             "Space 播放当前片段",
             "Shift+Space 播放整段",
-            "Escape 停止播放",
+            "Escape 取消加点 / 停止播放",
             "Delete 删除选中切点",
             "Alt+Left / Alt+Right 切换片段",
-            "Ctrl+D 在当前片段中心加切点",
+            "Ctrl+D 添加切点",
         ):
             label = QLabel(text)
             label.setWordWrap(True)
@@ -196,7 +197,8 @@ class MainWindow(QMainWindow):
         self.play_segment_button = QPushButton("播放当前片段")
         self.play_boundary_button = QPushButton("播放边界窗口")
         self.play_transition_button = QPushButton("播放相邻拼接")
-        self.split_center_button = QPushButton("片段中心加切点")
+        self.split_center_button = QPushButton("添加切点")
+        self.split_center_button.setCheckable(True)
         self.delete_cut_button = QPushButton("删除选中切点")
         self.stop_button = QPushButton("停止")
         row2.addWidget(self.play_full_button)
@@ -227,7 +229,7 @@ class MainWindow(QMainWindow):
         self.play_segment_button.clicked.connect(self.play_current_segment)
         self.play_boundary_button.clicked.connect(self.play_boundary_window)
         self.play_transition_button.clicked.connect(self.play_transition_preview)
-        self.split_center_button.clicked.connect(self.add_cutpoint_at_current_center)
+        self.split_center_button.clicked.connect(self.toggle_cutpoint_insert_mode)
         self.delete_cut_button.clicked.connect(self.delete_selected_cutpoint)
         self.stop_button.clicked.connect(self.playback.stop)
 
@@ -253,11 +255,11 @@ class MainWindow(QMainWindow):
         self._add_shortcut("Ctrl+E", self.export_current_segments)
         self._add_shortcut("Space", self._play_shortcut_handler)
         self._add_shortcut("Shift+Space", self._play_full_shortcut_handler)
-        self._add_shortcut("Escape", self.playback.stop)
+        self._add_shortcut("Escape", self._escape_shortcut_handler)
         self._add_shortcut("Delete", self._delete_shortcut_handler)
         self._add_shortcut("Alt+Left", lambda: self._select_relative_segment(-1))
         self._add_shortcut("Alt+Right", lambda: self._select_relative_segment(1))
-        self._add_shortcut("Ctrl+D", self.add_cutpoint_at_current_center)
+        self._add_shortcut("Ctrl+D", self.toggle_cutpoint_insert_mode)
 
     def _add_shortcut(self, key_sequence: str, handler: object) -> None:
         shortcut = QShortcut(QKeySequence(key_sequence), self)
@@ -265,6 +267,7 @@ class MainWindow(QMainWindow):
         self._shortcuts.append(shortcut)
 
     def _reset_ui_state(self) -> None:
+        self._set_cutpoint_insert_mode(False)
         self.file_label.setText("未加载音频")
         self.audio_meta_label.setText("时长: -    采样率: -")
         self.segment_list.clear()
@@ -488,6 +491,7 @@ class MainWindow(QMainWindow):
         self._apply_notes_edit()
 
     def _load_audio_from_path(self, path: str, project_data: ProjectData | None = None) -> bool:
+        self._set_cutpoint_insert_mode(False)
         try:
             track = load_audio_file(path, target_sr=self.settings.target_sample_rate)
         except AudioLoadError as exc:
@@ -722,18 +726,33 @@ class MainWindow(QMainWindow):
         cut_points.append(float(time_value))
         updated = sanitize_cut_points(cut_points, self.track.duration, self._min_gap_sec())
         if updated == self.project.cut_points:
+            self.statusBar().showMessage("切点太靠近已有边界，未添加。", 3000)
             return
         self.project.cut_points = updated
         preferred_index = max(0, self._segment_index_for_time(time_value))
-        self.selected_cutpoint_index = None
+        inserted_index = self._nearest_cutpoint_index(time_value)
+        self.selected_cutpoint_index = inserted_index
         self._rebuild_segments(preferred_index=preferred_index, analyze=True)
+        self.waveform_view.select_cutpoint(inserted_index)
+        self._set_cutpoint_insert_mode(False)
         self._push_history_if_changed(before_snapshot)
+        self.statusBar().showMessage(f"已添加切点: {self.project.cut_points[inserted_index]:.3f} s", 3000)
 
-    def add_cutpoint_at_current_center(self) -> None:
-        segment = self._current_segment()
-        if segment is None:
+    def toggle_cutpoint_insert_mode(self) -> None:
+        if self.track is None:
+            self._show_error("请先加载音频。")
             return
-        self.add_cutpoint_at_time((segment.start + segment.end) * 0.5)
+        self._set_cutpoint_insert_mode(not self._cutpoint_insert_mode)
+        if self._cutpoint_insert_mode:
+            self.statusBar().showMessage("添加切点模式：在波形或频谱上单击要添加的位置，Esc 取消。", 5000)
+        else:
+            self.statusBar().showMessage("已退出添加切点模式。", 2500)
+
+    def _set_cutpoint_insert_mode(self, enabled: bool) -> None:
+        active = bool(enabled and self.track is not None)
+        self._cutpoint_insert_mode = active
+        self.waveform_view.set_cutpoint_insert_mode(active)
+        self.split_center_button.setChecked(active)
 
     def delete_selected_cutpoint(self) -> None:
         if self.track is None:
@@ -834,6 +853,13 @@ class MainWindow(QMainWindow):
         if not self._editor_has_text_focus():
             self.delete_selected_cutpoint()
 
+    def _escape_shortcut_handler(self) -> None:
+        if self._cutpoint_insert_mode:
+            self._set_cutpoint_insert_mode(False)
+            self.statusBar().showMessage("已取消添加切点模式。", 2500)
+            return
+        self.playback.stop()
+
     def _select_relative_segment(self, delta: int) -> None:
         if not self.project.segments:
             return
@@ -859,6 +885,14 @@ class MainWindow(QMainWindow):
             if segment.start <= time_value <= segment.end:
                 return index
         return max(0, len(self.project.segments) - 1)
+
+    def _nearest_cutpoint_index(self, time_value: float) -> int:
+        if not self.project.cut_points:
+            return 0
+        return min(
+            range(len(self.project.cut_points)),
+            key=lambda index: abs(self.project.cut_points[index] - time_value),
+        )
 
     def _match_previous_segment(self, current: Segment, previous_segments: list[Segment]) -> Segment | None:
         best_segment: Segment | None = None

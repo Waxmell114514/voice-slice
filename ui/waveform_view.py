@@ -28,6 +28,7 @@ class WaveformEditor(QWidget):
         self._cut_points: list[float] = []
         self._min_gap_sec = 0.08
         self._selected_cut_index: int | None = None
+        self._cutpoint_insert_mode = False
 
         self.waveform_plot = pg.PlotWidget()
         self.spectrogram_plot = pg.PlotWidget()
@@ -68,6 +69,7 @@ class WaveformEditor(QWidget):
         self._sample_rate = 0
         self._cut_points = []
         self._selected_cut_index = None
+        self.set_cutpoint_insert_mode(False)
         self._waveform_curve.setData([], [])
         self._f0_curve.setData([], [])
         self._set_blank_spectrogram()
@@ -136,6 +138,17 @@ class WaveformEditor(QWidget):
             )
 
         self.select_cutpoint(self._selected_cut_index)
+
+    def set_cutpoint_insert_mode(self, enabled: bool) -> None:
+        """Use the next timeline click as a cutpoint insertion request."""
+        self._cutpoint_insert_mode = bool(enabled)
+        widgets = (self, self.waveform_plot, self.spectrogram_plot)
+        if self._cutpoint_insert_mode:
+            for widget in widgets:
+                widget.setCursor(Qt.CursorShape.CrossCursor)
+        else:
+            for widget in widgets:
+                widget.unsetCursor()
 
     def set_f0_preview(self, f0_times: np.ndarray, f0_values: np.ndarray) -> None:
         """Update only the F0 preview without redrawing waveform or cut lines."""
@@ -394,7 +407,7 @@ class WaveformEditor(QWidget):
 
         mouse_point = view_box.mapSceneToView(scene_position)
         time_value = float(np.clip(mouse_point.x(), 0.0, self._duration))
-        if getattr(event, "double", lambda: False)():
+        if self._cutpoint_insert_mode or getattr(event, "double", lambda: False)():
             self.add_cut_requested.emit(time_value)
             return
 
