@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "humanslice"
+version = "0.1.0"
+description = "Desktop tool for heuristic slicing of human vocal materials for Vocaloid / UTAU / OpenUtau workflows."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+dependencies = [
+    "PySide6>=6.7",
+    "pyqtgraph>=0.13",
+    "numpy>=1.26",
+    "scipy>=1.13",
+    "librosa>=0.10.2",
+    "soundfile>=0.12.1",
+    "audioread>=3.0.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.2"]
+
+[project.gui-scripts]
+humanslice = "humanslice.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["humanslice*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"

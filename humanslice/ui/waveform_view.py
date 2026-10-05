@@ -8,7 +8,15 @@ import pyqtgraph as pg
 from PySide6.QtCore import QRectF, Qt, Signal
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
-from models.project import Segment
+from humanslice.models.project import Segment
+
+
+# Overlay color per segment sub-region: (attribute, rgb, waveform alpha, spectrogram alpha).
+_REGION_STYLES = (
+    ("onset", (238, 155, 0), 60, 45),
+    ("nucleus", (10, 147, 150), 45, 35),
+    ("tail", (174, 32, 18), 45, 40),
+)
 
 
 class WaveformEditor(QWidget):
@@ -192,61 +200,26 @@ class WaveformEditor(QWidget):
         if segment.regions is None:
             return
 
-        self._overlay_regions.append(
-            self._add_region(
-                self.waveform_plot,
-                segment.regions.onset.start,
-                segment.regions.onset.end,
-                (238, 155, 0, 60),
-                -15,
+        for offset, (name, color, waveform_alpha, spectrogram_alpha) in enumerate(_REGION_STYLES):
+            region = getattr(segment.regions, name)
+            self._overlay_regions.append(
+                self._add_region(
+                    self.waveform_plot,
+                    region.start,
+                    region.end,
+                    (*color, waveform_alpha),
+                    -15 + offset,
+                )
             )
-        )
-        self._overlay_regions.append(
-            self._add_region(
-                self.waveform_plot,
-                segment.regions.nucleus.start,
-                segment.regions.nucleus.end,
-                (10, 147, 150, 45),
-                -14,
+            self._spectrogram_overlay_regions.append(
+                self._add_region(
+                    self.spectrogram_plot,
+                    region.start,
+                    region.end,
+                    (*color, spectrogram_alpha),
+                    25 + offset,
+                )
             )
-        )
-        self._overlay_regions.append(
-            self._add_region(
-                self.waveform_plot,
-                segment.regions.tail.start,
-                segment.regions.tail.end,
-                (174, 32, 18, 45),
-                -13,
-            )
-        )
-
-        self._spectrogram_overlay_regions.append(
-            self._add_region(
-                self.spectrogram_plot,
-                segment.regions.onset.start,
-                segment.regions.onset.end,
-                (238, 155, 0, 45),
-                25,
-            )
-        )
-        self._spectrogram_overlay_regions.append(
-            self._add_region(
-                self.spectrogram_plot,
-                segment.regions.nucleus.start,
-                segment.regions.nucleus.end,
-                (10, 147, 150, 35),
-                26,
-            )
-        )
-        self._spectrogram_overlay_regions.append(
-            self._add_region(
-                self.spectrogram_plot,
-                segment.regions.tail.start,
-                segment.regions.tail.end,
-                (174, 32, 18, 40),
-                27,
-            )
-        )
 
     def _configure_plots(self) -> None:
         for plot in (self.waveform_plot, self.spectrogram_plot, self.f0_plot):

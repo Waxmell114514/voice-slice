@@ -6,7 +6,7 @@ from typing import Callable
 import numpy as np
 from scipy.signal import find_peaks
 
-from models.project import Segment
+from humanslice.models.project import Segment
 
 
 @dataclass(slots=True)

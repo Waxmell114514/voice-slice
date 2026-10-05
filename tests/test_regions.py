@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from analysis.regions import analyze_segment_regions
+from humanslice.analysis.regions import analyze_segment_regions
 
 
 def test_analyze_segment_regions_returns_ordered_subregions() -> None:

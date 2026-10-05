@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from analysis.regions import analyze_segment_regions
-from analysis.scoring import ScoreConfig, compute_f0_curve, score_segment
-from models.project import Segment
+from humanslice.analysis.regions import analyze_segment_regions
+from humanslice.analysis.scoring import ScoreConfig, compute_f0_curve, score_segment
+from humanslice.models.project import Segment
 
 
 def test_compute_f0_curve_tracks_simple_sine_with_pyin() -> None:

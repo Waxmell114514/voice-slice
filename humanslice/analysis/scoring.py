@@ -5,9 +5,9 @@ from dataclasses import dataclass
 import numpy as np
 from scipy import signal
 
-from analysis.regions import RegionConfig, analyze_segment_regions
-from audio.io import extract_clip
-from models.project import Segment, SegmentRegions, SegmentScore
+from humanslice.analysis.regions import RegionConfig, analyze_segment_regions
+from humanslice.audio.io import extract_clip
+from humanslice.models.project import Segment, SegmentRegions, SegmentScore
 
 
 @dataclass(slots=True)

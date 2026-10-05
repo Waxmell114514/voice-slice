@@ -43,12 +43,16 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+`requirements.txt` 会以可编辑模式安装本项目（依赖声明在 `pyproject.toml`）。
+
 ## 启动
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 python main.py
 ```
+
+也可以用 `python -m humanslice`，或安装后直接运行 `humanslice`。
 
 ## 基本使用
 
@@ -74,7 +78,8 @@ python main.py
 - `Shift+Space` 播放整段
 - `Alt+Left` / `Alt+Right` 切换片段
 - `Delete` 删除选中切点
-- `Ctrl+D` 在当前片段中心新增切点
+- `Ctrl+D` 进入添加切点模式（在波形或频谱上单击添加）
+- `Escape` 取消添加切点模式 / 停止播放
 
 ## 配置
 
@@ -146,27 +151,28 @@ python main.py
 
 ```text
 HumanSlice/
-├─ main.py
-├─ requirements.txt
-├─ requirements-dev.txt
+├─ main.py                  # 启动入口（等价于 python -m humanslice）
+├─ pyproject.toml           # 包元数据、依赖、pytest 配置
 ├─ config.example.json
-├─ app/
-├─ analysis/
-├─ audio/
-├─ models/
-├─ services/
-├─ ui/
+├─ humanslice/
+│  ├─ __main__.py
+│  ├─ app/                  # 主窗口与后台任务
+│  ├─ analysis/             # 切点生成、区域分析、片段评分
+│  ├─ audio/                # 音频加载、裁切、试听
+│  ├─ models/               # 项目与片段数据结构
+│  ├─ services/             # 工程保存、设置、导出、撤销重做、片段重建
+│  └─ ui/                   # 波形 / 频谱 / F0 视图、片段详情面板、进度框
 └─ tests/
 ```
 
 目录职责：
 
-- `app/`：主窗口与后台任务
-- `analysis/`：切点生成、区域分析、片段评分
-- `audio/`：音频加载、裁切、试听
-- `models/`：项目与片段数据结构
-- `services/`：工程保存、设置加载、导出逻辑
-- `ui/`：波形 / 频谱 / F0 编辑视图
+- `humanslice/app/`：主窗口（只负责 UI 交互与状态编排）与 F0 后台任务
+- `humanslice/analysis/`：切点生成、区域分析、片段评分等信号处理
+- `humanslice/audio/`：音频加载、裁切、试听
+- `humanslice/models/`：项目与片段数据结构
+- `humanslice/services/`：工程保存、设置加载、导出、撤销重做，以及切点变化后的片段重建（`segment_service`，不依赖 Qt）
+- `humanslice/ui/`：可复用的界面组件
 - `tests/`：单元测试
 
 ## 测试
@@ -184,7 +190,7 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-当前测试覆盖了切点生成、呼吸音后处理、片段区域分析、评分、导出、撤销重做、工程保存加载与波形视图基础行为。
+当前测试覆盖了切点生成、呼吸音后处理、片段区域分析、评分、导出、撤销重做、工程保存加载、片段重建、波形视图基础行为，以及主窗口的切点编辑冒烟流程。
 
 ## 已知限制
 

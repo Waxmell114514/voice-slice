@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from models.project import ProjectData, Segment
-from services.history_service import HistoryManager
+from humanslice.models.project import ProjectData, Segment
+from humanslice.services.history_service import HistoryManager
 
 
 def test_history_manager_undo_redo_roundtrip() -> None:

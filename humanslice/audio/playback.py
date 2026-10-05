@@ -10,8 +10,8 @@ import soundfile as sf
 from PySide6.QtCore import QObject, QUrl, Signal
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 
-from audio.io import extract_clip
-from models.project import AudioTrack, Segment
+from humanslice.audio.io import extract_clip
+from humanslice.models.project import AudioTrack, Segment
 
 
 class PlaybackController(QObject):

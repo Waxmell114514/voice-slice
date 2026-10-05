@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 
-from models.project import ProjectData
+from humanslice.models.project import ProjectData
 
 
 def save_project(project: ProjectData, path: str | Path) -> Path:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from models.project import ProjectData
+from humanslice.models.project import ProjectData
 
 
 @dataclass(slots=True)

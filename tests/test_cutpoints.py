@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from analysis.cutpoints import CutpointConfig, generate_candidate_cutpoints, refine_candidate_cutpoints
+from humanslice.analysis.cutpoints import CutpointConfig, generate_candidate_cutpoints, refine_candidate_cutpoints
 
 
 def test_generate_candidate_cutpoints_detects_multiple_regions() -> None:

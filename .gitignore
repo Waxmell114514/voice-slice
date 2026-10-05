@@ -1,19 +1,18 @@
+# Python
 .venv/
 __pycache__/
 *.py[cod]
-*.pyo
-
-.pytest_cache/
-.pytest_tmp/
-.tmp/
-.tmp_manual_test/
-.tmp_project_service_*/
-.test_export_*/
-pytest-cache-files-*/
-
 build/
 dist/
 *.egg-info/
-.coverage
 
+# Test / scratch leftovers
+.pytest_cache/
+.pytest_tmp/
+pytest-cache-files-*/
+.coverage
+.tmp/
+.tmp_manual_test/
+
+# Local settings (copy from config.example.json)
 config.json

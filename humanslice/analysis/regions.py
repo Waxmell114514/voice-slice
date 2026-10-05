@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from audio.io import extract_clip
-from models.project import RegionRange, SegmentRegions
+from humanslice.audio.io import extract_clip
+from humanslice.models.project import RegionRange, SegmentRegions
 
 
 @dataclass(slots=True)

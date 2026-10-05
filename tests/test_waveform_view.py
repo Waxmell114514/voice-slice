@@ -8,8 +8,8 @@ import numpy as np
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtWidgets import QApplication
 
-from models.project import RegionRange, Segment, SegmentRegions
-from ui.waveform_view import WaveformEditor
+from humanslice.models.project import RegionRange, Segment, SegmentRegions
+from humanslice.ui.waveform_view import WaveformEditor
 
 
 class _MouseClickEvent:

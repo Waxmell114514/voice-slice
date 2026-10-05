@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 
-from models.project import AudioTrack
+from humanslice.models.project import AudioTrack
 
 
 class AudioLoadError(RuntimeError):

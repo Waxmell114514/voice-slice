@@ -8,8 +8,8 @@ from typing import Any, Sequence
 
 import soundfile as sf
 
-from audio.io import extract_clip
-from models.project import AudioTrack, Segment
+from humanslice.audio.io import extract_clip
+from humanslice.models.project import AudioTrack, Segment
 
 
 @dataclass(slots=True)
@@ -41,15 +41,22 @@ class UtauOtoEntry:
             "utau_overlap_ms": round(self.overlap_ms, 3),
         }
 
+    def to_label_row(self) -> dict[str, Any]:
+        """Row for utau_labels.csv; keys match `_utau_fieldnames()`."""
+        return {
+            "file_name": self.file_name,
+            "alias": self.alias,
+            "offset_ms": round(self.offset_ms, 3),
+            "consonant_ms": round(self.consonant_ms, 3),
+            "cutoff_ms": round(self.cutoff_ms, 3),
+            "preutterance_ms": round(self.preutterance_ms, 3),
+            "overlap_ms": round(self.overlap_ms, 3),
+        }
+
 
 def segments_to_metadata(segments: Sequence[Segment]) -> list[dict[str, Any]]:
     """Flatten segments into export-ready metadata rows."""
-    rows: list[dict[str, Any]] = []
-    for segment in segments:
-        row = segment.to_metadata_row()
-        row.update(build_utau_oto_entry(segment, f"{segment.segment_id}.wav").to_dict())
-        rows.append(row)
-    return rows
+    return [_metadata_row(segment, build_utau_oto_entry(segment, _wav_file_name(segment))) for segment in segments]
 
 
 def export_segments(
@@ -62,15 +69,12 @@ def export_segments(
     segment_dir = base_dir / "segments"
     segment_dir.mkdir(parents=True, exist_ok=True)
 
-    rows = segments_to_metadata(segments)
-    oto_entries: list[UtauOtoEntry] = []
-    for row, segment in zip(rows, segments):
+    oto_entries = [build_utau_oto_entry(segment, _wav_file_name(segment)) for segment in segments]
+    rows: list[dict[str, Any]] = []
+    for segment, oto_entry in zip(segments, oto_entries):
         clip = extract_clip(track.samples, track.sample_rate, segment.start, segment.end)
-        file_name = f"{segment.segment_id}.wav"
-        sf.write(segment_dir / file_name, clip, track.sample_rate, subtype="PCM_16")
-        oto_entry = build_utau_oto_entry(segment, file_name)
-        oto_entries.append(oto_entry)
-        row["file_name"] = file_name
+        sf.write(segment_dir / oto_entry.file_name, clip, track.sample_rate, subtype="PCM_16")
+        rows.append({**_metadata_row(segment, oto_entry), "file_name": oto_entry.file_name})
 
     json_path = base_dir / "metadata.json"
     csv_path = base_dir / "metadata.csv"
@@ -78,31 +82,9 @@ def export_segments(
     utau_csv_path = base_dir / "utau_labels.csv"
 
     json_path.write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    fieldnames = list(rows[0].keys()) if rows else _default_fieldnames()
-    with csv_path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
-
-    oto_lines = [entry.to_oto_line() for entry in oto_entries]
-    oto_path.write_text("\n".join(oto_lines), encoding="utf-8")
-
-    with utau_csv_path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=_utau_fieldnames())
-        writer.writeheader()
-        for entry in oto_entries:
-            writer.writerow(
-                {
-                    "file_name": entry.file_name,
-                    "alias": entry.alias,
-                    "offset_ms": round(entry.offset_ms, 3),
-                    "consonant_ms": round(entry.consonant_ms, 3),
-                    "cutoff_ms": round(entry.cutoff_ms, 3),
-                    "preutterance_ms": round(entry.preutterance_ms, 3),
-                    "overlap_ms": round(entry.overlap_ms, 3),
-                }
-            )
+    _write_csv(csv_path, list(rows[0].keys()) if rows else _default_fieldnames(), rows)
+    oto_path.write_text("\n".join(entry.to_oto_line() for entry in oto_entries), encoding="utf-8")
+    _write_csv(utau_csv_path, _utau_fieldnames(), [entry.to_label_row() for entry in oto_entries])
 
     return {
         "segments_dir": segment_dir,
@@ -141,6 +123,21 @@ def build_utau_oto_entry(segment: Segment, file_name: str) -> UtauOtoEntry:
         preutterance_ms=preutterance_ms,
         overlap_ms=overlap_ms,
     )
+
+
+def _wav_file_name(segment: Segment) -> str:
+    return f"{segment.segment_id}.wav"
+
+
+def _metadata_row(segment: Segment, oto_entry: UtauOtoEntry) -> dict[str, Any]:
+    return {**segment.to_metadata_row(), **oto_entry.to_dict()}
+
+
+def _write_csv(path: Path, fieldnames: list[str], rows: Sequence[dict[str, Any]]) -> None:
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
 
 
 def _default_fieldnames() -> list[str]:

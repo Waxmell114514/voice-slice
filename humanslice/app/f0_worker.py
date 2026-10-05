@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from PySide6.QtCore import QObject, Signal, Slot
 
-from analysis.scoring import ScoreConfig, compute_preview_f0_curve
+from humanslice.analysis.scoring import ScoreConfig, compute_preview_f0_curve
 
 
 class F0PreviewWorker(QObject):

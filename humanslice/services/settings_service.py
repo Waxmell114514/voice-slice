@@ -5,9 +5,9 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from analysis.cutpoints import CutpointConfig
-from analysis.regions import RegionConfig
-from analysis.scoring import ScoreConfig
+from humanslice.analysis.cutpoints import CutpointConfig
+from humanslice.analysis.regions import RegionConfig
+from humanslice.analysis.scoring import ScoreConfig
 
 
 @dataclass(slots=True)
