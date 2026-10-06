@@ -20,8 +20,8 @@ python -m venv .venv
 pip install torch --index-url https://download.pytorch.org/whl/cu130
 pip install -r requirements.txt
 
-# 2. 推荐：安装 Montreal Forced Aligner（音素级对齐，独立 conda 环境，路径不能含空格）
-conda create -p %LOCALAPPDATA%\humanslice\envs\mfa -c conda-forge montreal-forced-aligner python=3.12
+# 2. 推荐：安装 Montreal Forced Aligner（音素级对齐，独立 conda 环境）
+conda create -p .\data\envs\mfa -c conda-forge montreal-forced-aligner python=3.12
 
 # 3. 一条命令：素材文件夹 + 歌曲 -> 人力人声 + 音源 + 工程
 python -m humanslice make --material D:\素材\某人 --vocal 歌曲.mp3 --separate --lyrics 歌词.txt -o out\作品
@@ -39,8 +39,9 @@ python -m humanslice make --material D:\素材\某人 --vocal 歌曲.mp3 --separ
 | `bank/` | 单元库（可复用：再做别的歌时用 `--bank` 指定） |
 
 首次运行会自动下载模型（约 8 GB）：Qwen3-ASR-1.7B、Qwen3-ForcedAligner-0.6B、RMVPE、
-PC-NSF-HiFiGAN、BS-Roformer 分离模型、MFA 普通话模型。缓存在 `%USERPROFILE%\.cache\huggingface`
-与 `%LOCALAPPDATA%\humanslice`。
+PC-NSF-HiFiGAN、BS-Roformer 分离模型、MFA 普通话模型。模型、MFA 环境和缓存全部放在项目内的
+`data\` 文件夹（已加入 .gitignore；可用环境变量 `HUMANSLICE_HOME` 改到别处）。
+**项目路径不能含空格**：MFA 在含空格的路径下无法运行。
 
 ## 分步使用
 

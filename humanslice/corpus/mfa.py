@@ -2,7 +2,7 @@
 
 MFA is the only aligner with published *speech* phone-boundary accuracy (< 15 ms mean on
 English/Japanese benchmarks). It runs on CPU in a separate environment (default
-``<project>/.envs/mfa``) driven through ``conda run``. Utterances are aligned as toned
+``<data_root>/envs/mfa``, i.e. ``<project>/data/envs/mfa``) driven through ``conda run``. Utterances are aligned as toned
 pinyin tokens (``ni3 hao3``) against a syllable lexicon derived from MFA's own
 dictionary (see ``mfa_lexicon``), so each word interval is exactly one syllable.
 """
@@ -68,6 +68,12 @@ class MFARunner:
             )
         if language not in MODEL_FILES:
             raise MFAError(f"No MFA model configured for language {language!r}")
+        for path in (self.env_path, scratch_dir("mfa")):
+            if " " in str(path.resolve()):
+                raise MFAError(
+                    f"MFA cannot run from a path containing spaces: {path}\n"
+                    "Move the project to a space-free folder or set HUMANSLICE_HOME to one."
+                )
 
     # ----------------------------------------------------------------- CLI
 
@@ -80,7 +86,8 @@ class MFARunner:
 
     def run(self, *args: str) -> subprocess.CompletedProcess[str]:
         cmd = [self._conda(), "run", "-p", str(self.env_path), "--no-capture-output", "mfa", *args]
-        env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
+        # MFA_ROOT_DIR keeps MFA's config / history out of ~/Documents/MFA.
+        env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1", MFA_ROOT_DIR=str(data_root() / "mfa_root"))
         result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
         if result.returncode != 0:
             raise MFAError(f"mfa {' '.join(args[:2])} failed:\n{result.stdout[-3000:]}\n{result.stderr[-3000:]}")

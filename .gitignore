@@ -17,6 +17,9 @@ pytest-cache-files-*/
 # Local settings (copy from config.example.json)
 config.json
 
+# Models, MFA environment and caches (see humanslice/common/paths.py)
+data/
+
 # Dev datasets (GTSinger subset, CC BY-NC-SA) and local outputs
 devdata/
 out/
